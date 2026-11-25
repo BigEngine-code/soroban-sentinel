@@ -14,6 +14,7 @@ pub mod entry;
 pub mod fee_bump;
 pub mod footprint;
 pub mod histogram;
+pub mod key_ranges;
 pub mod key_pattern;
 pub mod multisig;
 pub mod network_limits;
@@ -60,6 +61,7 @@ pub use key_pattern::{
     parse_key_pattern, KeyPattern, KeyPatternCandidateInput, KeyPatternToken,
     MAX_KEY_PATTERN_CANDIDATES, MAX_KEY_PATTERN_LEN,
 };
+pub use key_ranges::derive_key_prefix_range;
 pub use network_limits::NetworkLimits;
 pub use planner::{
     plan_extension, plan_extension_with_cost, DeferralReason, DeferredExtension, ExtensionPlan,
@@ -89,7 +91,7 @@ pub use storage_audit::{
 pub use ttl::{
     calculate_remaining_ledgers, estimate_horizon_days, estimate_horizon_days_with_velocity,
     estimate_remaining_days, estimate_remaining_seconds, estimate_remaining_seconds_with_velocity,
-    SECONDS_PER_DAY, TARGET_LEDGER_CLOSE_SECONDS,
+    filter_ledger_velocity, SECONDS_PER_DAY, TARGET_LEDGER_CLOSE_SECONDS,
 };
 pub use upgrade::{
     detect_contract_upgrade, format_contract_code_hash, ContractUpgradeBaseline,
