@@ -3,6 +3,7 @@ use std::time::Duration;
 use crate::{
     alerts::{
         datadog::{DatadogAdapter, DatadogSite},
+        google_chat::GoogleChatAlertDispatcher,
         incident::{IncidentDispatcher, Provider},
     },
     args::WatchArgs,
@@ -80,6 +81,18 @@ pub async fn run_watch(args: WatchArgs) -> i32 {
         None
     };
 
+    let mut google_chat = if let Some(webhook_url) = args.alert_google_chat {
+        match GoogleChatAlertDispatcher::new(&webhook_url) {
+            Ok(dispatcher) => Some(dispatcher),
+            Err(error) => {
+                eprintln!("Error: {error}");
+                return EXIT_INVALID_ARGS;
+            }
+        }
+    } else {
+        None
+    };
+
     loop {
         match usecase.execute_with_keys(request.clone()).await {
             Ok((report, keys)) => {
@@ -100,6 +113,11 @@ pub async fn run_watch(args: WatchArgs) -> i32 {
                 if let Some(dd) = datadog.as_mut() {
                     if let Err(error) = dd.observe(&report).await {
                         eprintln!("Datadog notification failed: {error}");
+                    }
+                }
+                if let Some(dispatcher) = google_chat.as_mut() {
+                    if let Err(error) = dispatcher.observe(&report).await {
+                        eprintln!("Google Chat notification failed: {error}");
                     }
                 }
             }

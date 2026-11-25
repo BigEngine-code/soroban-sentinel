@@ -123,6 +123,9 @@ pub struct WatchArgs {
     #[arg(long, default_value = "datadoghq.com", value_name = "SITE",
           value_parser = ["datadoghq.com", "datadoghq.eu"])]
     pub datadog_site: String,
+    /// Google Chat incoming webhook URL for risk alerts
+    #[arg(long = "alert-google-chat", value_name = "WEBHOOK_URL", hide_env_values = true)]
+    pub alert_google_chat: Option<String>,
 }
 
 impl std::fmt::Debug for WatchArgs {
