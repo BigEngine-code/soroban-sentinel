@@ -1,5 +1,6 @@
 //! Core pure domain models and calculations.
 
+pub mod anomaly;
 pub mod acceleration;
 pub mod alias;
 pub mod budget;
@@ -36,6 +37,9 @@ pub use acceleration::{
     AcceleratedDecayWarning, AccelerationError, AccelerationReport, DecayClassification,
     EntryAcceleration, StateGrowth, StorageAccelerationTracker,
     DEFAULT_ACCELERATION_TOLERANCE_RATIO,
+};
+pub use anomaly::{
+    LedgerAnomalyFilter, ANOMALY_Z_SCORE_THRESHOLD, DEFAULT_ANOMALY_WINDOW_SIZE,
 };
 pub use alias::{AliasError, AliasRegistry};
 pub use bundle::{
