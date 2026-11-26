@@ -14,8 +14,8 @@ pub struct GoogleChatAlertDispatcher {
 impl GoogleChatAlertDispatcher {
     /// Creates a dispatcher for a Google Chat incoming webhook URL.
     pub fn new(webhook_url: &str) -> Result<Self, String> {
-        let webhook_url = Url::parse(webhook_url)
-            .map_err(|_| "Invalid Google Chat webhook URL".to_string())?;
+        let webhook_url =
+            Url::parse(webhook_url).map_err(|_| "Invalid Google Chat webhook URL".to_string())?;
         let host = webhook_url.host_str();
         let local_http = webhook_url.scheme() == "http"
             && matches!(host, Some("localhost" | "127.0.0.1" | "::1"));

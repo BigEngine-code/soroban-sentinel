@@ -42,10 +42,7 @@ impl MatrixAlertDispatcher {
         }
         let room_id = room_id.into();
         let access_token = access_token.into();
-        if !room_id.starts_with('!')
-            || !room_id.contains(':')
-            || access_token.trim().is_empty()
-        {
+        if !room_id.starts_with('!') || !room_id.contains(':') || access_token.trim().is_empty() {
             return Err("Matrix room ID and access token must be valid and nonempty".into());
         }
 
@@ -84,9 +81,7 @@ impl MatrixAlertDispatcher {
             }
 
             let transaction_id = match self.pending.get(&key) {
-                Some((status, transaction_id)) if *status == entry.status => {
-                    transaction_id.clone()
-                }
+                Some((status, transaction_id)) if *status == entry.status => transaction_id.clone(),
                 _ => {
                     let transaction_id = transaction_id();
                     self.pending
@@ -95,8 +90,7 @@ impl MatrixAlertDispatcher {
                 }
             };
             let mut url = self.homeserver.clone();
-            let path_result = url.path_segments_mut();
-            let Ok(mut path) = path_result else {
+            let Ok(mut path) = url.path_segments_mut() else {
                 return Err("Invalid Matrix homeserver URL path".into());
             };
             path.pop_if_empty().extend([
@@ -127,7 +121,7 @@ impl MatrixAlertDispatcher {
 
             match response {
                 Ok(response) if response.status().is_success() => {
-                    self.reported.insert(key, entry.status);
+                    self.reported.insert(key.clone(), entry.status);
                     self.pending.remove(&key);
                 }
                 Ok(response) => errors.push(format!(

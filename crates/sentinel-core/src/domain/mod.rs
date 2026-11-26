@@ -1,8 +1,8 @@
 //! Core pure domain models and calculations.
 
-pub mod anomaly;
 pub mod acceleration;
 pub mod alias;
+pub mod anomaly;
 pub mod budget;
 pub mod bundle;
 pub mod burn_rate;
@@ -12,13 +12,17 @@ pub mod compare;
 pub mod debt;
 pub mod durability_migration;
 pub mod entry;
+pub mod envelope_packer;
 pub mod fee_bump;
 pub mod footprint;
+pub mod footprint_fees;
 pub mod histogram;
-pub mod key_ranges;
+pub mod init_footprint;
 pub mod key_pattern;
+pub mod key_ranges;
 pub mod multisig;
 pub mod network_limits;
+pub mod overhead;
 pub mod planner;
 pub mod probabilistic_ttl;
 pub mod recommend;
@@ -38,10 +42,8 @@ pub use acceleration::{
     EntryAcceleration, StateGrowth, StorageAccelerationTracker,
     DEFAULT_ACCELERATION_TOLERANCE_RATIO,
 };
-pub use anomaly::{
-    LedgerAnomalyFilter, ANOMALY_Z_SCORE_THRESHOLD, DEFAULT_ANOMALY_WINDOW_SIZE,
-};
 pub use alias::{AliasError, AliasRegistry};
+pub use anomaly::{LedgerAnomalyFilter, ANOMALY_Z_SCORE_THRESHOLD, DEFAULT_ANOMALY_WINDOW_SIZE};
 pub use bundle::{
     plan_bundle_footprints, BundleError, BundleFootprint, MAX_BUNDLE_FOOTPRINT_ENTRIES,
 };
@@ -57,16 +59,30 @@ pub use compare::{
 };
 pub use debt::{RentDebt, RentDebtCalculator};
 pub use entry::{Durability, EntryType, InstanceStorageBreakdown, SacAssetInfo, StorageEntry};
+pub use envelope_packer::{
+    calculate_batch_envelope_size, estimate_entry_footprint_bytes, pack_extension_batches,
+    BASE_ENVELOPE_OVERHEAD_BYTES, DEFAULT_ENTRY_FOOTPRINT_BYTES,
+};
 pub use fee_bump::{
     recommend_inclusion_fee, FeeBumpError, FeePercentiles, FeeRecommendation, FeeUrgency,
 };
 pub use footprint::{AtRiskFootprint, FootprintAccess, FootprintValidation, FootprintValidator};
+pub use footprint_fees::{
+    billed_kib_units, classify_ledger_key, scale_bytes_fee, stroops_to_xlm, xdr_encoded_len,
+    FootprintEntryCost, FootprintEntryInput, FootprintEntryKind, FootprintFeeBreakdown,
+    FootprintFeeCalculator, FootprintFeeError, FootprintPartitionCost, BYTES_PER_KIB,
+    STROOPS_PER_XLM, TESTNET_FEE_READ_1KB_STROOPS, TESTNET_FEE_WRITE_1KB_STROOPS,
+};
 pub use key_pattern::{
     parse_key_pattern, KeyPattern, KeyPatternCandidateInput, KeyPatternToken,
     MAX_KEY_PATTERN_CANDIDATES, MAX_KEY_PATTERN_LEN,
 };
 pub use key_ranges::derive_key_prefix_range;
 pub use network_limits::NetworkLimits;
+pub use overhead::{
+    calculate_storage_overhead, measure_contract_data_overhead, StorageOverheadAnalysis,
+    BASE_CONTRACT_DATA_WRAPPER_BYTES,
+};
 pub use planner::{
     plan_extension, plan_extension_with_cost, DeferralReason, DeferredExtension, ExtensionPlan,
     ExtensionPlanRequest, PlannedExtension,
@@ -112,6 +128,7 @@ pub use durability_migration::{
     DurabilityMigrationAnalysis, MigrationRequest, RentAnalysisError, RentRates,
 };
 pub use histogram::{ExpirationBucket, ExpirationHistogram, HistogramBucket};
+pub use init_footprint::{predict_initial_footprint, InitialFootprintEstimate};
 pub use multisig::{
     required_cosigners, verify_bumper_authority, AccountSignerConfig, AccountThresholds,
     MultisigError, MultisigVerificationResult, SignerEntry,

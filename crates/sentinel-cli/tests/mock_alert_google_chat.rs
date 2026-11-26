@@ -74,9 +74,7 @@ async fn sends_card_v2_payload_and_deduplicates_unchanged_status() {
     let card = &payload["cardsV2"][0];
     assert_eq!(card["cardId"], "soroban-sentinel-alert");
     assert_eq!(card["card"]["header"]["title"], "Soroban Sentinel: WARN");
-    let widgets = card["card"]["sections"][0]["widgets"]
-        .as_array()
-        .unwrap();
+    let widgets = card["card"]["sections"][0]["widgets"].as_array().unwrap();
     assert!(widgets
         .iter()
         .any(|widget| widget["decoratedText"]["text"] == CONTRACT));
@@ -101,6 +99,9 @@ async fn returns_error_for_unsuccessful_webhook_response() {
         .await;
 
     let mut dispatcher = GoogleChatAlertDispatcher::new(&server.uri()).unwrap();
-    let error = dispatcher.observe(&report(RiskLevel::Critical)).await.unwrap_err();
+    let error = dispatcher
+        .observe(&report(RiskLevel::Critical))
+        .await
+        .unwrap_err();
     assert!(error.contains("HTTP 503"));
 }

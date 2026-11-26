@@ -33,15 +33,21 @@ fn range_excludes_a_different_symbol_and_contract() {
     let different_symbol = symbol_key(CONTRACT, "user_2");
     let longer_symbol = symbol_key(CONTRACT, "user_10");
 
-    assert!(!(lower.as_slice() <= different_symbol.as_slice()
-        && different_symbol.as_slice() < upper.as_slice()));
-    assert!(!(lower.as_slice() <= longer_symbol.as_slice()
-        && longer_symbol.as_slice() < upper.as_slice()));
+    assert!(
+        !(lower.as_slice() <= different_symbol.as_slice()
+            && different_symbol.as_slice() < upper.as_slice())
+    );
+    assert!(
+        !(lower.as_slice() <= longer_symbol.as_slice()
+            && longer_symbol.as_slice() < upper.as_slice())
+    );
 
     let other_contract = stellar_strkey::Contract([1; 32]).to_string();
     let different_contract = symbol_key(&other_contract, "user_1");
     let (other_lower, _) = derive_key_prefix_range(&other_contract, "user_1");
     assert_ne!(lower, other_lower);
-    assert!(!(lower.as_slice() <= different_contract.as_slice()
-        && different_contract.as_slice() < upper.as_slice()));
+    assert!(
+        !(lower.as_slice() <= different_contract.as_slice()
+            && different_contract.as_slice() < upper.as_slice())
+    );
 }

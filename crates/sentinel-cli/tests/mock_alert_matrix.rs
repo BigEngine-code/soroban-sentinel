@@ -1,7 +1,5 @@
 use clap::Parser;
-use sentinel_cli::{
-    alerts::matrix::MatrixAlertDispatcher, Cli, Commands,
-};
+use sentinel_cli::{alerts::matrix::MatrixAlertDispatcher, Cli, Commands};
 use sentinel_core::{Durability, EntryType, RiskLevel, StorageEntryReport, TTLReport};
 use wiremock::{
     matchers::{header, method},
@@ -74,12 +72,15 @@ async fn sends_formatted_notice_and_unique_transaction_ids_on_transitions() {
         MatrixAlertDispatcher::new(&server.uri(), "!ops:example.org", "fixture-token").unwrap();
     dispatcher.observe(&report(RiskLevel::Warn)).await.unwrap();
     dispatcher.observe(&report(RiskLevel::Warn)).await.unwrap();
-    dispatcher.observe(&report(RiskLevel::Critical)).await.unwrap();
+    dispatcher
+        .observe(&report(RiskLevel::Critical))
+        .await
+        .unwrap();
 
     let requests = server.received_requests().await.unwrap();
     assert_eq!(requests.len(), 2);
-    let first_transaction = requests[0].url.rsplit('/').next().unwrap();
-    let second_transaction = requests[1].url.rsplit('/').next().unwrap();
+    let first_transaction = requests[0].url.as_str().rsplit('/').next().unwrap();
+    let second_transaction = requests[1].url.as_str().rsplit('/').next().unwrap();
     assert_ne!(first_transaction, second_transaction);
 
     let payload: serde_json::Value = serde_json::from_slice(&requests[0].body).unwrap();
