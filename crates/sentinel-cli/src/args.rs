@@ -25,6 +25,12 @@ pub struct Cli {
 pub enum Commands {
     /// Scan a contract and inspect storage entry TTL status and expiry risk
     Scan(Box<ScanArgs>),
+    /// Model the expiration timeline of storage entries that will not be renewed
+    PrunePlan(PrunePlanArgs),
+    /// Export OpenAPI 3.1 webhook contracts offline
+    ExportOpenapi(ExportOpenapiArgs),
+    /// Score contract health from a fleet manifest
+    HealthMatrix(HealthMatrixArgs),
     /// Rank resolved contract entries by serialized byte size
     TopConsumers(TopConsumersArgs),
     /// Check Soroban RPC connectivity, network identity, and protocol support
@@ -80,6 +86,8 @@ pub enum Commands {
 
     /// Display network state-archival and contract entry limits
     Network(NetworkArgs),
+    /// Estimate a contract TTL extension's resource limits
+    EstimateGas(EstimateGasArgs),
 
     /// Analyze historical scan snapshots to project TTL decay and threshold crossings
     Trend(TrendArgs),
@@ -116,6 +124,26 @@ pub struct DoctorArgs {
     pub no_color: bool,
 }
 
+#[derive(Args, Debug, Clone)]
+pub struct EstimateGasArgs {
+    #[arg(value_name = "CONTRACT_ID")]
+    pub contract_id: String,
+    #[arg(long = "extend-by", value_name = "LEDGERS")]
+    pub extend_by: u32,
+    #[arg(long, default_value = "testnet", value_name = "NETWORK")]
+    pub network: String,
+    #[arg(long, value_name = "URL", env = "SOROBAN_RPC_URL")]
+    pub rpc_url: Option<String>,
+    #[arg(long = "key", value_name = "SYMBOL")]
+    pub key: Vec<String>,
+    #[arg(long = "key-xdr", value_name = "BASE64_XDR")]
+    pub key_xdr: Vec<String>,
+    #[arg(long = "key-expr", value_name = "EXPR")]
+    pub key_expr: Vec<String>,
+    #[arg(long, default_value = "text", value_parser = ["text", "json"])]
+    pub format: String,
+}
+
 // Avoid Debug implementations that print provider credentials.
 #[derive(Args)]
 pub struct WatchArgs {
@@ -142,6 +170,31 @@ pub struct WatchArgs {
     pub pagerduty_routing_key: Option<String>,
     #[arg(long, env = "OPSGENIE_API_KEY", hide_env_values = true)]
     pub opsgenie_api_key: Option<String>,
+    /// Mattermost incoming webhook URL for formatted alert cards
+    #[arg(
+        long = "alert-mattermost",
+        env = "SENTINEL_ALERT_MATTERMOST",
+        value_name = "URL",
+        hide_env_values = true
+    )]
+    pub alert_mattermost: Option<String>,
+    /// Optional Mattermost channel override for incoming webhook alerts
+    #[arg(long = "alert-mattermost-channel", value_name = "CHANNEL")]
+    pub alert_mattermost_channel: Option<String>,
+    /// Optional Mattermost username override for incoming webhook alerts
+    #[arg(long = "alert-mattermost-username", value_name = "USERNAME")]
+    pub alert_mattermost_username: Option<String>,
+    /// Telegram Bot API token for outbound risk alerts
+    #[arg(long, env = "SENTINEL_TELEGRAM_BOT_TOKEN", hide_env_values = true)]
+    pub telegram_bot_token: Option<String>,
+    /// Telegram target chat or channel ID for outbound risk alerts
+    #[arg(
+        long,
+        env = "SENTINEL_TELEGRAM_CHAT_ID",
+        hide_env_values = true,
+        allow_hyphen_values = true
+    )]
+    pub telegram_chat_id: Option<String>,
     /// Datadog API key for metrics and events submission
     #[arg(
         long,
@@ -368,6 +421,9 @@ pub struct ScanArgs {
     #[arg(long, default_value = "testnet", value_name = "NETWORK")]
     pub network: String,
 
+    /// Output format for scan results: text, json, ndjson, csv, parquet, sarif, markdown, pushgateway, or html (self-contained HTML5 report)
+    /// Output format for scan results: "text" (colorized ASCII table), "json" (machine-readable), "ndjson" (line-delimited JSON per storage entry), "csv" (flat tabular export), "parquet" (binary columnar export, requires the `parquet` Cargo feature), "sarif" (GitHub Code Scanning), "markdown" (CI summary), or "html" (self-contained HTML5 report)
+    /// Output format for scan results: text, json, csv, parquet, sarif, markdown, or pushgateway
     /// Output format for scan results: "text" (colorized ASCII table), "json" (machine-readable), "ndjson" (line-delimited JSON per storage entry), "csv" (flat tabular export), "parquet" (binary columnar export, requires the `parquet` Cargo feature), "sarif" (GitHub Code Scanning), or "markdown"
     #[arg(long, default_value = "text", value_name = "FORMAT")]
     pub format: String,
@@ -457,6 +513,70 @@ pub struct ScanArgs {
     /// Target maintenance horizon in days used by recommendations.
     #[arg(long, default_value_t = 30, value_name = "DAYS")]
     pub target_days: u32,
+}
+
+/// Command-line arguments for `sentinel prune-plan`.
+///
+/// `--key` variants add active persistent keys used as reference sources, while
+/// `--expire-key` variants mark entries as intentionally expiring. Temporary
+/// entries are always explicit because Soroban RPC cannot enumerate them.
+#[derive(Args, Debug, Clone)]
+pub struct PrunePlanArgs {
+    /// Contract address whose entries may be allowed to expire (C... Strkey format)
+    #[arg(value_name = "CONTRACT_ID")]
+    pub contract_id: String,
+
+    /// Active persistent key symbol to include as a reference source (repeatable)
+    #[arg(long = "key", value_name = "SYMBOL")]
+    pub key: Vec<String>,
+
+    /// Active persistent key encoded as base64 ScVal XDR (repeatable)
+    #[arg(long = "key-xdr", value_name = "BASE64_XDR")]
+    pub key_xdr: Vec<String>,
+
+    /// Active persistent key encoded as a typed expression (repeatable)
+    #[arg(long = "key-expr", value_name = "EXPR")]
+    pub key_expr: Vec<String>,
+
+    /// Persistent key symbol marked for expiration (repeatable)
+    #[arg(long = "expire-key", value_name = "SYMBOL")]
+    pub expire_key: Vec<String>,
+
+    /// Persistent key encoded as base64 ScVal XDR and marked for expiration (repeatable)
+    #[arg(long = "expire-key-xdr", value_name = "BASE64_XDR")]
+    pub expire_key_xdr: Vec<String>,
+
+    /// Persistent key encoded as a typed expression and marked for expiration (repeatable)
+    #[arg(long = "expire-key-expr", value_name = "EXPR")]
+    pub expire_key_expr: Vec<String>,
+
+    /// Temporary key symbol marked for expiration (repeatable)
+    #[arg(long = "temp-key", value_name = "SYMBOL")]
+    pub temp_key: Vec<String>,
+
+    /// Temporary key encoded as a typed expression and marked for expiration (repeatable)
+    #[arg(long = "temp-key-expr", value_name = "EXPR")]
+    pub temp_key_expr: Vec<String>,
+
+    /// Target Stellar network
+    #[arg(long, default_value = "testnet", value_name = "NETWORK")]
+    pub network: String,
+
+    /// Custom Soroban RPC endpoint URL
+    #[arg(long, value_name = "URL", env = "SOROBAN_RPC_URL")]
+    pub rpc_url: Option<String>,
+
+    /// Output format: "text" (table) or "json"
+    #[arg(long, default_value = "text", value_parser = ["text", "json"], value_name = "FORMAT")]
+    pub format: String,
+
+    /// Warning threshold in ledgers used to classify remaining TTL
+    #[arg(long, default_value_t = 120960, value_name = "LEDGERS")]
+    pub warning_threshold: u32,
+
+    /// Critical threshold in ledgers used to classify remaining TTL
+    #[arg(long, value_name = "LEDGERS")]
+    pub critical_threshold: Option<u32>,
 }
 
 /// Command-line arguments for the cost-matrix command.
@@ -957,6 +1077,49 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_prune_plan_defaults_and_flags() {
+        let contract = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM";
+        let defaults = Cli::parse_from(["sentinel", "prune-plan", contract]);
+        match defaults.command {
+            Commands::PrunePlan(args) => {
+                assert_eq!(args.contract_id, contract);
+                assert!(args.expire_key.is_empty());
+                assert!(args.temp_key.is_empty());
+                assert_eq!(args.network, "testnet");
+                assert_eq!(args.format, "text");
+                assert_eq!(args.warning_threshold, 120960);
+            }
+            _ => panic!("expected prune-plan command"),
+        }
+
+        let custom = Cli::parse_from([
+            "sentinel",
+            "prune-plan",
+            contract,
+            "--expire-key",
+            "OLD",
+            "--expire-key-expr",
+            "sym:Legacy",
+            "--temp-key",
+            "CACHE",
+            "--key",
+            "LIVE",
+            "--format",
+            "json",
+        ]);
+        match custom.command {
+            Commands::PrunePlan(args) => {
+                assert_eq!(args.expire_key, vec!["OLD"]);
+                assert_eq!(args.expire_key_expr, vec!["sym:Legacy"]);
+                assert_eq!(args.temp_key, vec!["CACHE"]);
+                assert_eq!(args.key, vec!["LIVE"]);
+                assert_eq!(args.format, "json");
+            }
+            _ => panic!("expected prune-plan command"),
+        }
+    }
+
+    #[test]
     fn test_parse_trend_defaults_and_flags() {
         let defaults = Cli::parse_from(["sentinel", "trend", "--input-dir", "./scans"]);
         match defaults.command {
@@ -996,4 +1159,30 @@ mod tests {
             _ => panic!("expected trend command"),
         }
     }
+}
+
+#[derive(Args, Debug)]
+pub struct ExportOpenapiArgs {
+    #[arg(long, default_value = "json", value_parser = ["json", "yaml"])]
+    pub format: String,
+}
+
+#[derive(Args, Debug)]
+pub struct HealthMatrixArgs {
+    #[arg(long, value_name = "PATH")]
+    pub manifest: std::path::PathBuf,
+    /// Show only contracts scoring below this minimum.
+    #[arg(long, value_parser = clap::value_parser!(u8).range(0..=100))]
+    pub min_score: Option<u8>,
+    /// Persistent-key count consuming all 20 count-headroom points.
+    #[arg(long, default_value_t = 100, value_parser = clap::value_parser!(u32).range(1..))]
+    pub entry_budget: u32,
+    /// Largest-entry byte size consuming all 20 storage-headroom points.
+    #[arg(long, default_value_t = 65536, value_parser = clap::value_parser!(u64).range(1..))]
+    pub storage_budget_bytes: u64,
+    /// Supply a planning rent rate together with its denominator.
+    #[arg(long, requires = "rent_denominator")]
+    pub rent_fee_per_kib: Option<u64>,
+    #[arg(long, requires = "rent_fee_per_kib", value_parser = clap::value_parser!(u64).range(1..))]
+    pub rent_denominator: Option<u64>,
 }
